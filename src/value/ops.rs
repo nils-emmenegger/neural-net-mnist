@@ -24,7 +24,7 @@ impl std::ops::Mul for &Value {
 }
 
 impl Value {
-    pub fn powf(self, exp: f64) -> Value {
+    pub fn powf(&self, exp: f64) -> Value {
         Value::with_op(
             self.data().powf(exp),
             Op::Pow {
@@ -32,5 +32,9 @@ impl Value {
                 exp,
             },
         )
+    }
+
+    pub fn tanh(&self) -> Value {
+        Value::with_op(self.data().tanh(), Op::Tanh(self.clone()))
     }
 }

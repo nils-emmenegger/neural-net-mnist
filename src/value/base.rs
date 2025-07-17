@@ -14,6 +14,7 @@ pub(super) enum Op {
     Neg(Value),
     Mul(Value, Value),
     Pow { base: Value, exp: f64 },
+    Tanh(Value),
 }
 
 impl Value {

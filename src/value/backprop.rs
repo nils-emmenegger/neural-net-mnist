@@ -10,6 +10,7 @@ impl Value {
             Some(Op::Neg(x)) => vec![x],
             Some(Op::Mul(x, y)) => vec![x, y],
             Some(Op::Pow { base, exp: _ }) => vec![base],
+            Some(Op::Tanh(x)) => vec![x],
             None => Vec::new(),
         }
     }
@@ -52,7 +53,7 @@ impl Value {
         }
 
         // Assert that everything has been processed, otherwise there is a loop
-        in_degree.into_values().for_each(|i| assert_eq!(i, 0));
+        assert_eq!(sorting.len(), in_degree.len());
 
         sorting
     }
@@ -84,6 +85,9 @@ impl Value {
                 }
                 Some(Op::Pow { mut base, exp }) => {
                     base.add_grad(val.grad() * exp * base.data().powf(exp - 1.0));
+                }
+                Some(Op::Tanh(mut x)) => {
+                    x.add_grad(1.0 - x.data().tanh().powi(2));
                 }
                 None => {}
             }
@@ -128,5 +132,16 @@ mod tests {
         b.backward();
         assert_eq!(a.grad(), 7.0);
         assert_eq!(b.grad(), 1.0);
+    }
+
+    #[test]
+    fn test4() {
+        let a = Value::new(0.5);
+        let b = Value::new(0.25);
+        let mut c = (&(&a * &b) + &a).tanh();
+        c.backward();
+        assert_eq!(a.grad(), 0.8655239349624853);
+        assert_eq!(b.grad(), 0.3462095739849941);
+        assert_eq!(c.grad(), 1.0);
     }
 }
