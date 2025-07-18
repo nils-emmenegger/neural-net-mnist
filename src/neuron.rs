@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::value::Value;
 use rand::{distr::Uniform, prelude::*};
 
@@ -30,5 +32,12 @@ impl Neuron {
                 &acc + &(activation * weight)
             })
             .tanh()
+    }
+
+    pub fn parameters(&self) -> impl Iterator<Item = Value> {
+        self.weights
+            .iter()
+            .cloned()
+            .chain(iter::once(self.bias.clone()))
     }
 }

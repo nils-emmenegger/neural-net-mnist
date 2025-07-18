@@ -19,4 +19,8 @@ impl Layer {
             .map(|neuron| neuron.forward(activations))
             .collect::<Vec<_>>()
     }
+
+    pub fn paramters(&self) -> impl Iterator<Item = Value> {
+        self.neurons.iter().flat_map(|neuron| neuron.parameters())
+    }
 }

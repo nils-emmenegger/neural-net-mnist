@@ -22,4 +22,19 @@ impl MultiLayerPerceptron {
             .iter()
             .fold(Vec::from(inputs), |acc, layer| layer.forward(&acc))
     }
+
+    pub fn parameters(&self) -> impl Iterator<Item = Value> {
+        self.layers.iter().flat_map(|layer| layer.paramters())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test() {
+        let mlp = MultiLayerPerceptron::new(10, &[9, 5, 10, 1]);
+        assert_eq!(mlp.parameters().count(), 220);
+    }
 }
