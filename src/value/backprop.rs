@@ -87,7 +87,7 @@ impl Value {
                     base.add_grad(val.grad() * exp * base.data().powf(exp - 1.0));
                 }
                 Some(Op::Tanh(mut x)) => {
-                    x.add_grad(1.0 - x.data().tanh().powi(2));
+                    x.add_grad(val.grad() * (1.0 - x.data().tanh().powi(2)));
                 }
                 None => {}
             }
@@ -138,10 +138,10 @@ mod tests {
     fn test4() {
         let a = Value::new(0.5);
         let b = Value::new(0.25);
-        let mut c = (&(&a * &b) + &a).tanh();
+        let mut c = &b * &(&(&a * &b) + &a).tanh();
         c.backward();
-        assert_eq!(a.grad(), 0.8655239349624853);
-        assert_eq!(b.grad(), 0.3462095739849941);
+        assert_eq!(a.grad(), 0.2163809837406213);
+        assert_eq!(b.grad(), 0.6411521158456308);
         assert_eq!(c.grad(), 1.0);
     }
 }
