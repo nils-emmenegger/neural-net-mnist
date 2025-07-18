@@ -15,7 +15,7 @@ impl Neuron {
             weights: dist
                 .sample_iter(rng)
                 .take(num_inputs)
-                .map(|val| Value::new(val))
+                .map(Value::new)
                 .collect::<Vec<_>>(),
             bias: Value::new(0.0),
         }
