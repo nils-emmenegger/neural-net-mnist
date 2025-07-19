@@ -7,7 +7,6 @@ impl Value {
     fn get_children(&self) -> Vec<Value> {
         match self.prev() {
             Some(Op::Add(x, y)) => vec![x, y],
-            Some(Op::Neg(x)) => vec![x],
             Some(Op::Mul(x, y)) => vec![x, y],
             Some(Op::Pow { base, exp: _ }) => vec![base],
             Some(Op::Tanh(x)) => vec![x],
@@ -75,9 +74,6 @@ impl Value {
                 Some(Op::Add(mut x, mut y)) => {
                     x.add_grad(val.grad());
                     y.add_grad(val.grad());
-                }
-                Some(Op::Neg(mut x)) => {
-                    x.add_grad(-val.grad());
                 }
                 Some(Op::Mul(mut x, mut y)) => {
                     x.add_grad(val.grad() * y.data());

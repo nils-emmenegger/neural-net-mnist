@@ -14,34 +14,59 @@ impl TrainingData {
     }
 }
 
-struct Output {
-    output: Vec<Value>,
-    loss: Value,
-}
-
 pub fn gradient_descent(
     model: &MultiLayerPerceptron,
     training_data: &[TrainingData],
     mut loss_function: impl FnMut(&[Value], &[f64]) -> Value,
+    mut accuracy_function: impl FnMut(&[Value], &[f64]) -> bool,
     iterations: usize,
-    learning_rate: impl FnMut(usize) -> f64,
-    per_iteration_callback: impl FnMut(usize, f64, f64),
+    mut learning_rate: impl FnMut(usize) -> f64,
+    mut per_iteration_callback: impl FnMut(usize, f64, f64),
 ) {
     for iter in 0..iterations {
-        let outputs = training_data
-            .iter()
-            .map(
-                |TrainingData {
-                     input,
-                     expected_output,
-                 }| {
-                    let output =
-                        model.forward(&input.iter().copied().map(Value::new).collect::<Vec<_>>());
-                    let loss = loss_function(&output, &expected_output);
+        struct Acc {
+            total_loss: Value,
+            num_accurate: usize,
+        }
 
-                    Output { output, loss }
-                },
-            )
-            .collect::<Vec<_>>();
+        let Acc {
+            total_loss,
+            num_accurate,
+        } = training_data.iter().fold(
+            Acc {
+                total_loss: Value::new(0.0),
+                num_accurate: 0,
+            },
+            |mut acc,
+             TrainingData {
+                 input,
+                 expected_output,
+             }| {
+                let output =
+                    model.forward(&input.iter().copied().map(Value::new).collect::<Vec<_>>());
+
+                let loss = loss_function(&output, expected_output);
+                acc.total_loss = &acc.total_loss + &loss;
+
+                if accuracy_function(&output, expected_output) {
+                    acc.num_accurate += 1;
+                }
+
+                acc
+            },
+        );
+
+        let mut avg_loss = &total_loss / &Value::new(training_data.len() as f64);
+        let avg_accuracy = num_accurate as f64 / (training_data.len() as f64);
+
+        per_iteration_callback(iter, avg_loss.data(), avg_accuracy);
+
+        avg_loss.backward();
+
+        let learning_rate = learning_rate(iter);
+
+        for mut param in model.parameters() {
+            param.add_data(-param.grad() * learning_rate);
+        }
     }
 }

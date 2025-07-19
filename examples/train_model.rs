@@ -1,11 +1,18 @@
 use anyhow::{Context, Result};
-use neural_net_mnist::training::TrainingData;
+use neural_net_mnist::multi_layer_perceptron::MultiLayerPerceptron;
+use neural_net_mnist::training::{TrainingData, gradient_descent};
+use neural_net_mnist::value::Value;
 use std::fs::File;
 use std::io::{self, BufRead};
 
 fn load_training_data() -> Result<Vec<TrainingData>> {
     let file_path = "mnist_train.csv";
-    let file = File::open(file_path).context("Failed to open file, download from https://www.kaggle.com/datasets/oddrationale/mnist-in-csv")?;
+    let file = File::open(file_path).with_context(|| {
+        format!(
+            "Failed to open {file_path}, \
+            download it from https://www.kaggle.com/datasets/oddrationale/mnist-in-csv"
+        )
+    })?;
     let reader = io::BufReader::new(file);
 
     let mut data = Vec::new();
@@ -43,14 +50,47 @@ fn load_training_data() -> Result<Vec<TrainingData>> {
     Ok(data)
 }
 
+fn loss_function(output: &[Value], expected_output: &[f64]) -> Value {
+    output
+        .iter()
+        .zip(expected_output.iter().copied())
+        .map(|(o, e)| (o - &Value::new(e)).powf(2.0))
+        .fold(Value::new(0.0), |acc, cur| &acc + &cur)
+}
+
+fn accuracy_function(output: &[Value], expected_output: &[f64]) -> bool {
+    let mut max_output_index = 0;
+
+    for (i, o) in output.iter().enumerate() {
+        if o.data() > output[max_output_index].data() {
+            max_output_index = i;
+        }
+    }
+
+    let max_expected_index = expected_output.iter().position(|e| *e == 1.0).unwrap();
+
+    max_output_index == max_expected_index
+}
+
+fn per_iteration_callback(iter: usize, loss: f64, accuracy: f64) {
+    println!("Iteration {iter}: loss = {loss}, accuracy = {accuracy}");
+}
+
 fn main() -> Result<()> {
-    // check if mnist dataset has already been downloaded, throw error if not
-    // check if model file exists, recreate if not
-    // preferably this would display/graph/log some information about the loss function
-
-    // Download dataset from https://www.kaggle.com/datasets/oddrationale/mnist-in-csv
-
     let data = load_training_data()?;
+    let model = MultiLayerPerceptron::new(784, &[50, 10]);
+    let iterations = 50;
+    let learning_rate = |iter| 1.0 - iter as f64 / iterations as f64;
+
+    gradient_descent(
+        &model,
+        &data[..1000],
+        loss_function,
+        accuracy_function,
+        iterations,
+        learning_rate,
+        per_iteration_callback,
+    );
 
     Ok(())
 }

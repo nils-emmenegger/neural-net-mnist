@@ -11,7 +11,6 @@ struct InnerValue {
 #[derive(Clone)]
 pub(super) enum Op {
     Add(Value, Value),
-    Neg(Value),
     Mul(Value, Value),
     Pow { base: Value, exp: f64 },
     Tanh(Value),
