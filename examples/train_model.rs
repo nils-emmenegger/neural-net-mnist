@@ -85,7 +85,7 @@ fn per_iteration_callback(iter: usize, model: &MultiLayerPerceptron, loss: f64, 
 
 fn main() -> Result<()> {
     let data = load_training_data()?;
-    let model = MultiLayerPerceptron::new(784, &[32, 16, 10]);
+    let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
     let iterations = 50;
     let learning_rate = |iter| 1.0 + (0.01 - 1.0) * iter as f64 / (50 - 1) as f64;
 
