@@ -1,2 +1,4 @@
 /target
-/src/bin/tle18p1.rs
+/examples/tle18p1.rs
+mnist_train.csv
+mnist_test.csv
