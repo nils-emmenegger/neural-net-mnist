@@ -62,28 +62,28 @@ impl Value {
 
         // Set all gradients to 0
         for val in topological_sorting.iter_mut() {
-            val.reset_grad();
+            val.set_grad(0.0);
         }
 
         // Set root gradient to 1.0
-        self.add_grad(1.0);
+        self.set_grad(1.0);
 
         // Backpropagate
         for val in topological_sorting.into_iter() {
             match val.prev() {
                 Some(Op::Add(mut x, mut y)) => {
-                    x.add_grad(val.grad());
-                    y.add_grad(val.grad());
+                    x.set_grad(x.grad() + val.grad());
+                    y.set_grad(y.grad() + val.grad());
                 }
                 Some(Op::Mul(mut x, mut y)) => {
-                    x.add_grad(val.grad() * y.data());
-                    y.add_grad(val.grad() * x.data());
+                    x.set_grad(x.grad() + val.grad() * y.data());
+                    y.set_grad(y.grad() + val.grad() * x.data());
                 }
                 Some(Op::Pow { mut base, exp }) => {
-                    base.add_grad(val.grad() * exp * base.data().powf(exp - 1.0));
+                    base.set_grad(base.grad() + val.grad() * exp * base.data().powf(exp - 1.0));
                 }
                 Some(Op::Tanh(mut x)) => {
-                    x.add_grad(val.grad() * (1.0 - x.data().tanh().powi(2)));
+                    x.set_grad(x.grad() + val.grad() * (1.0 - x.data().tanh().powi(2)));
                 }
                 None => {}
             }

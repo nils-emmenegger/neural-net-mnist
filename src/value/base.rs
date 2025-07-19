@@ -37,20 +37,16 @@ impl Value {
         self.0.borrow().data
     }
 
-    pub fn add_data(&mut self, val: f64) {
-        self.0.borrow_mut().data += val;
+    pub fn set_data(&mut self, val: f64) {
+        self.0.borrow_mut().data = val;
     }
 
     pub fn grad(&self) -> f64 {
         self.0.borrow().grad
     }
 
-    pub(super) fn reset_grad(&mut self) {
-        self.0.borrow_mut().grad = 0.0;
-    }
-
-    pub(super) fn add_grad(&mut self, val: f64) {
-        self.0.borrow_mut().grad += val;
+    pub(super) fn set_grad(&mut self, val: f64) {
+        self.0.borrow_mut().grad = val;
     }
 
     pub(super) fn prev(&self) -> Option<Op> {

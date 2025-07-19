@@ -66,7 +66,7 @@ pub fn gradient_descent(
         let learning_rate = learning_rate(iter);
 
         for mut param in model.parameters() {
-            param.add_data(-param.grad() * learning_rate);
+            param.set_data(param.data() - param.grad() * learning_rate);
         }
     }
 }
