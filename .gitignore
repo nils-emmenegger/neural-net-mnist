@@ -2,3 +2,4 @@
 /examples/tle18p1.rs
 mnist_train.csv
 mnist_test.csv
+model.bin

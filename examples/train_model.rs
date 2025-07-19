@@ -1,9 +1,11 @@
 use anyhow::{Context, Result};
-use neural_net_mnist::multi_layer_perceptron::MultiLayerPerceptron;
-use neural_net_mnist::training::{TrainingData, gradient_descent};
-use neural_net_mnist::value::Value;
+use neural_net_mnist::{
+    multi_layer_perceptron::MultiLayerPerceptron,
+    training::{TrainingData, gradient_descent},
+    value::Value,
+};
 use std::fs::File;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Read, Write};
 
 fn load_training_data() -> Result<Vec<TrainingData>> {
     let file_path = "mnist_train.csv";
@@ -50,6 +52,35 @@ fn load_training_data() -> Result<Vec<TrainingData>> {
     Ok(data)
 }
 
+fn write_model_to_file(model: &MultiLayerPerceptron, file: &File) -> Result<()> {
+    let mut writer = io::BufWriter::new(file);
+
+    for param in model.parameters() {
+        writer
+            .write_all(&param.data().to_le_bytes())
+            .context("Failed to write model to file")?;
+    }
+    writer.flush().context("Failed to flush model to file")?;
+
+    Ok(())
+}
+
+fn load_model_from_file(model: &MultiLayerPerceptron, file: &File) -> Result<()> {
+    let mut reader = io::BufReader::new(file);
+    let mut bytes = [0u8; 8];
+
+    for mut param in model.parameters() {
+        reader.read_exact(&mut bytes)?;
+        param.set_data(f64::from_le_bytes(bytes));
+    }
+
+    if reader.read(&mut bytes)? != 0 {
+        anyhow::bail!("Model file has extra unread bytes");
+    }
+
+    Ok(())
+}
+
 fn loss_function(output: &[Value], expected_output: &[f64]) -> Value {
     output
         .iter()
@@ -79,25 +110,43 @@ fn per_iteration_callback(iter: usize, model: &MultiLayerPerceptron, loss: f64, 
         .max_by(|a, b| a.partial_cmp(b).unwrap())
         .unwrap();
     println!(
-        "Iteration {iter}: loss = {loss}, accuracy = {accuracy}, maximum parameter = {max_param}"
+        "Iteration {iter:>4}: loss = {loss:>8.5}, accuracy = {accuracy:>8.5}, \
+        maximum parameter = {max_param:>8.5}"
     );
+}
+
+fn linearly_interpolate(start: f64, end: f64, iterations: usize) -> impl Fn(usize) -> f64 {
+    let delta = end - start;
+    let step = if iterations <= 1 {
+        0.0
+    } else {
+        delta / (iterations - 1) as f64
+    };
+    move |iter| start + step * iter as f64
 }
 
 fn main() -> Result<()> {
     let data = load_training_data()?;
     let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
-    let iterations = 50;
-    let learning_rate = |iter| 1.0 + (0.01 - 1.0) * iter as f64 / (50 - 1) as f64;
+    let iterations = 11;
+    let learning_rate = linearly_interpolate(0.1, 0.01, iterations);
+
+    let model_file = "model.bin";
+    if let Ok(file) = File::open(model_file) {
+        load_model_from_file(&model, &file)?;
+    }
 
     gradient_descent(
         &model,
-        &data[..1000],
+        &data[100..200],
         loss_function,
         accuracy_function,
         iterations,
         learning_rate,
         per_iteration_callback,
     );
+
+    write_model_to_file(&model, &File::create(model_file)?)?;
 
     Ok(())
 }
