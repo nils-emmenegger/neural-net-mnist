@@ -21,7 +21,7 @@ pub fn gradient_descent(
     mut accuracy_function: impl FnMut(&[Value], &[f64]) -> bool,
     iterations: usize,
     mut learning_rate: impl FnMut(usize) -> f64,
-    mut per_iteration_callback: impl FnMut(usize, f64, f64),
+    mut per_iteration_callback: impl FnMut(usize, &MultiLayerPerceptron, f64, f64),
 ) {
     for iter in 0..iterations {
         struct Acc {
@@ -59,7 +59,7 @@ pub fn gradient_descent(
         let mut avg_loss = &total_loss / &Value::new(training_data.len() as f64);
         let avg_accuracy = num_accurate as f64 / (training_data.len() as f64);
 
-        per_iteration_callback(iter, avg_loss.data(), avg_accuracy);
+        per_iteration_callback(iter, model, avg_loss.data(), avg_accuracy);
 
         avg_loss.backward();
 

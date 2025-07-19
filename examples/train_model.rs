@@ -72,15 +72,22 @@ fn accuracy_function(output: &[Value], expected_output: &[f64]) -> bool {
     max_output_index == max_expected_index
 }
 
-fn per_iteration_callback(iter: usize, loss: f64, accuracy: f64) {
-    println!("Iteration {iter}: loss = {loss}, accuracy = {accuracy}");
+fn per_iteration_callback(iter: usize, model: &MultiLayerPerceptron, loss: f64, accuracy: f64) {
+    let max_param = model
+        .parameters()
+        .map(|p| p.data().abs())
+        .max_by(|a, b| a.partial_cmp(b).unwrap())
+        .unwrap();
+    println!(
+        "Iteration {iter}: loss = {loss}, accuracy = {accuracy}, maximum parameter = {max_param}"
+    );
 }
 
 fn main() -> Result<()> {
     let data = load_training_data()?;
-    let model = MultiLayerPerceptron::new(784, &[50, 10]);
+    let model = MultiLayerPerceptron::new(784, &[32, 16, 10]);
     let iterations = 50;
-    let learning_rate = |iter| 1.0 - iter as f64 / iterations as f64;
+    let learning_rate = |iter| 1.0 + (0.01 - 1.0) * iter as f64 / (50 - 1) as f64;
 
     gradient_descent(
         &model,
