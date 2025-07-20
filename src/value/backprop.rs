@@ -4,14 +4,49 @@ use std::collections::{HashMap, hash_map::Entry};
 use super::Value;
 
 impl Value {
-    fn get_children(&self) -> Vec<Value> {
-        match self.prev() {
-            Some(Op::Add(x, y)) => vec![x, y],
-            Some(Op::Mul(x, y)) => vec![x, y],
-            Some(Op::Pow { base, exp: _ }) => vec![base],
-            Some(Op::Tanh(x)) => vec![x],
-            None => Vec::new(),
+    fn children(&self) -> impl Iterator<Item = Value> {
+        struct ValueChildrenIterator {
+            children: [Option<Value>; 2],
+            index: usize,
         }
+
+        impl ValueChildrenIterator {
+            fn new(op: Option<Op>) -> Self {
+                let mut children = [None, None];
+
+                match op {
+                    Some(Op::Add(x, y)) => {
+                        children[0] = Some(x);
+                        children[1] = Some(y);
+                    }
+                    Some(Op::Mul(x, y)) => {
+                        children[0] = Some(x);
+                        children[1] = Some(y);
+                    }
+                    Some(Op::Pow { base, exp: _ }) => {
+                        children[0] = Some(base);
+                    }
+                    Some(Op::Tanh(x)) => {
+                        children[0] = Some(x);
+                    }
+                    None => {}
+                }
+
+                Self { children, index: 0 }
+            }
+        }
+
+        impl Iterator for ValueChildrenIterator {
+            type Item = Value;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                let child = self.children.get_mut(self.index).and_then(|x| x.take());
+                self.index += 1;
+                child
+            }
+        }
+
+        ValueChildrenIterator::new(self.prev())
     }
 
     fn topological_sort(&self) -> Vec<Value> {
@@ -23,7 +58,7 @@ impl Value {
         in_degree.insert(self.clone(), 0);
         stack.push(self.clone());
         while let Some(val) = stack.pop() {
-            for child in val.get_children().into_iter() {
+            for child in val.children() {
                 match in_degree.entry(child.clone()) {
                     Entry::Occupied(mut occupied_entry) => *(occupied_entry.get_mut()) += 1,
                     Entry::Vacant(vacant_entry) => {
@@ -41,7 +76,7 @@ impl Value {
         let mut sorting = Vec::new();
         stack.push(self.clone());
         while let Some(val) = stack.pop() {
-            for child in val.get_children().into_iter() {
+            for child in val.children() {
                 let ind = in_degree.get_mut(&child).unwrap();
                 *ind -= 1;
                 if *ind == 0 {
