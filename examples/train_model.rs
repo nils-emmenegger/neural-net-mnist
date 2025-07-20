@@ -129,24 +129,37 @@ fn main() -> Result<()> {
     let data = load_training_data()?;
     let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
     let batch_size = 100;
-    let iterations = 30;
-    let learning_rate = linearly_interpolate(0.1, 0.01, iterations);
+    // let iterations = 30;
+    // let learning_rate = linearly_interpolate(0.1, 0.01, iterations);
 
     let model_file = "model.bin";
     if let Ok(file) = File::open(model_file) {
         load_model_from_file(&model, &file)?;
     }
 
-    stochastic_gradient_descent(
-        &model,
-        &data,
-        batch_size,
-        iterations,
-        loss_function,
-        accuracy_function,
-        learning_rate,
-        per_iteration_callback,
-    );
+    let handle = std::thread::spawn(move || {
+        let mut stdio = io::stdin().lock();
+        let mut bytes = [0u8; 1];
+        let _ = stdio.read(&mut bytes);
+        println!("Received input, quitting...");
+    });
+
+    loop {
+        stochastic_gradient_descent(
+            &model,
+            &data,
+            batch_size,
+            1,
+            loss_function,
+            accuracy_function,
+            |_| 0.01,
+            per_iteration_callback,
+        );
+
+        if handle.is_finished() {
+            break;
+        }
+    }
 
     write_model_to_file(&model, &File::create(model_file)?)?;
 
