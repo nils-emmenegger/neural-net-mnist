@@ -1,7 +1,6 @@
-use std::iter;
-
 use crate::value::Value;
 use rand::{distr::Uniform, prelude::*};
+use std::iter;
 
 pub struct Neuron {
     weights: Vec<Value>,

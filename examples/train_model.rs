@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use neural_net_mnist::{
     multi_layer_perceptron::MultiLayerPerceptron,
-    training::{TrainingData, gradient_descent},
+    training::{TrainingData, stochastic_gradient_descent},
     value::Value,
 };
 use std::fs::File;
@@ -128,7 +128,8 @@ fn linearly_interpolate(start: f64, end: f64, iterations: usize) -> impl Fn(usiz
 fn main() -> Result<()> {
     let data = load_training_data()?;
     let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
-    let iterations = 11;
+    let batch_size = 100;
+    let iterations = 30;
     let learning_rate = linearly_interpolate(0.1, 0.01, iterations);
 
     let model_file = "model.bin";
@@ -136,12 +137,13 @@ fn main() -> Result<()> {
         load_model_from_file(&model, &file)?;
     }
 
-    gradient_descent(
+    stochastic_gradient_descent(
         &model,
-        &data[100..200],
+        &data,
+        batch_size,
+        iterations,
         loss_function,
         accuracy_function,
-        iterations,
         learning_rate,
         per_iteration_callback,
     );
