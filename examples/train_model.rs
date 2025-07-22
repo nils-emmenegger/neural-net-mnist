@@ -115,9 +115,9 @@ fn linearly_interpolate(start: f64, end: f64, iterations: usize) -> impl Fn(usiz
 
 fn main() -> Result<()> {
     let data = load_training_data()?;
-    let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
-    let batch_size = 100;
-    let learning_rate = linearly_interpolate(0.5, 0.1, 150);
+    let model = MultiLayerPerceptron::new(784, &[50], 10);
+    let batch_size = 1;
+    let learning_rate = |_| 0.01;
 
     let model_file = "model.bin";
     if let Ok(file) = File::open(model_file) {
@@ -131,34 +131,44 @@ fn main() -> Result<()> {
         println!("Received input, quitting...");
     });
 
-    for iteration in 0.. {
-        let GradientDescentResult {
-            avg_loss,
-            avg_accuracy,
-        } = stochastic_gradient_descent(
-            &model,
-            &data,
-            batch_size,
-            iteration,
-            loss_function,
-            accuracy_function,
-            &learning_rate,
-        );
+    let mut last_timestamp = std::time::Instant::now();
 
-        let max_param = model
-            .parameters()
-            .map(|p| p.data().abs())
-            .max_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap();
+    for iteration in 0.. {
+        let mut inner_iterations = 0;
+        let mut total_loss = 0.0;
+        let mut total_accuracy = 0.0;
+
+        while last_timestamp.elapsed().as_secs() < 30 {
+            let GradientDescentResult {
+                avg_loss,
+                avg_accuracy,
+            } = stochastic_gradient_descent(
+                &model,
+                &data,
+                batch_size,
+                iteration,
+                loss_function,
+                accuracy_function,
+                &learning_rate,
+            );
+
+            inner_iterations += 1;
+            total_loss += avg_loss;
+            total_accuracy += avg_accuracy;
+        }
+
         println!(
-            "Iteration {iteration:>4}: loss = {avg_loss:>8.5}, accuracy = {avg_accuracy:>8.5}, \
-        maximum parameter = {max_param:>8.5}, learning rate = {:>8.5}",
+            "Iteration {iteration:>4}: loss = {:>8.5}, accuracy = {:>8.5}, learning rate = {:>8.5}",
+            total_loss / inner_iterations as f64,
+            total_accuracy / inner_iterations as f64,
             learning_rate(iteration)
         );
 
         if handle.is_finished() {
             break;
         }
+
+        last_timestamp = std::time::Instant::now();
     }
 
     write_model_to_file(&model, &File::create(model_file)?)?;
