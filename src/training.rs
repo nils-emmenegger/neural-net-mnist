@@ -15,6 +15,11 @@ impl TrainingData {
     }
 }
 
+pub struct GradientDescentResult {
+    pub avg_loss: f64,
+    pub avg_accuracy: f64,
+}
+
 pub fn gradient_descent<'a>(
     model: &MultiLayerPerceptron,
     training_data: impl Iterator<Item = &'a TrainingData>,
@@ -22,8 +27,7 @@ pub fn gradient_descent<'a>(
     mut accuracy_function: impl FnMut(&[Value], &[f64]) -> bool,
     iteration: usize,
     mut learning_rate: impl FnMut(usize) -> f64,
-    mut per_iteration_callback: impl FnMut(usize, &MultiLayerPerceptron, f64, f64),
-) {
+) -> GradientDescentResult {
     struct Acc {
         total_loss: Value,
         num_accurate: usize,
@@ -63,14 +67,17 @@ pub fn gradient_descent<'a>(
     let mut avg_loss = &total_loss / &Value::new(batch_size as f64);
     let avg_accuracy = num_accurate as f64 / (batch_size as f64);
 
-    per_iteration_callback(iteration, model, avg_loss.data(), avg_accuracy);
-
     avg_loss.backward();
 
     let learning_rate = learning_rate(iteration);
 
     for mut param in model.parameters() {
         param.set_data(param.data() - param.grad() * learning_rate);
+    }
+
+    GradientDescentResult {
+        avg_loss: avg_loss.data(),
+        avg_accuracy,
     }
 }
 
@@ -115,21 +122,17 @@ pub fn stochastic_gradient_descent(
     model: &MultiLayerPerceptron,
     training_data: &[TrainingData],
     batch_size: usize,
-    iterations: usize,
+    iteration: usize,
     mut loss_function: impl FnMut(&[Value], &[f64]) -> Value,
     mut accuracy_function: impl FnMut(&[Value], &[f64]) -> bool,
     mut learning_rate: impl FnMut(usize) -> f64,
-    mut per_iteration_callback: impl FnMut(usize, &MultiLayerPerceptron, f64, f64),
-) {
-    for iteration in 0..iterations {
-        gradient_descent(
-            model,
-            RandomSampleIterator::new(training_data, batch_size).unwrap(),
-            &mut loss_function,
-            &mut accuracy_function,
-            iteration,
-            &mut learning_rate,
-            &mut per_iteration_callback,
-        );
-    }
+) -> GradientDescentResult {
+    gradient_descent(
+        model,
+        RandomSampleIterator::new(training_data, batch_size).unwrap(),
+        &mut loss_function,
+        &mut accuracy_function,
+        iteration,
+        &mut learning_rate,
+    )
 }

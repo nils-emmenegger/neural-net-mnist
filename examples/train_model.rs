@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use neural_net_mnist::{
     multi_layer_perceptron::MultiLayerPerceptron,
-    training::{TrainingData, stochastic_gradient_descent},
+    training::{GradientDescentResult, TrainingData, stochastic_gradient_descent},
     value::Value,
 };
 use std::fs::File;
@@ -103,18 +103,6 @@ fn accuracy_function(output: &[Value], expected_output: &[f64]) -> bool {
     max_output_index == max_expected_index
 }
 
-fn per_iteration_callback(iter: usize, model: &MultiLayerPerceptron, loss: f64, accuracy: f64) {
-    let max_param = model
-        .parameters()
-        .map(|p| p.data().abs())
-        .max_by(|a, b| a.partial_cmp(b).unwrap())
-        .unwrap();
-    println!(
-        "Iteration {iter:>4}: loss = {loss:>8.5}, accuracy = {accuracy:>8.5}, \
-        maximum parameter = {max_param:>8.5}"
-    );
-}
-
 fn linearly_interpolate(start: f64, end: f64, iterations: usize) -> impl Fn(usize) -> f64 {
     let delta = end - start;
     let step = if iterations <= 1 {
@@ -122,15 +110,14 @@ fn linearly_interpolate(start: f64, end: f64, iterations: usize) -> impl Fn(usiz
     } else {
         delta / (iterations - 1) as f64
     };
-    move |iter| start + step * iter as f64
+    move |iter| start + step * iter.min(iterations - 1) as f64
 }
 
 fn main() -> Result<()> {
     let data = load_training_data()?;
     let model = MultiLayerPerceptron::new(784, &[32, 16], 10);
     let batch_size = 100;
-    // let iterations = 30;
-    // let learning_rate = linearly_interpolate(0.1, 0.01, iterations);
+    let learning_rate = linearly_interpolate(0.5, 0.1, 150);
 
     let model_file = "model.bin";
     if let Ok(file) = File::open(model_file) {
@@ -144,16 +131,29 @@ fn main() -> Result<()> {
         println!("Received input, quitting...");
     });
 
-    loop {
-        stochastic_gradient_descent(
+    for iteration in 0.. {
+        let GradientDescentResult {
+            avg_loss,
+            avg_accuracy,
+        } = stochastic_gradient_descent(
             &model,
             &data,
             batch_size,
-            1,
+            iteration,
             loss_function,
             accuracy_function,
-            |_| 0.01,
-            per_iteration_callback,
+            &learning_rate,
+        );
+
+        let max_param = model
+            .parameters()
+            .map(|p| p.data().abs())
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap();
+        println!(
+            "Iteration {iteration:>4}: loss = {avg_loss:>8.5}, accuracy = {avg_accuracy:>8.5}, \
+        maximum parameter = {max_param:>8.5}, learning rate = {:>8.5}",
+            learning_rate(iteration)
         );
 
         if handle.is_finished() {
