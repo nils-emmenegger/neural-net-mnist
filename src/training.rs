@@ -23,9 +23,9 @@ pub struct GradientDescentResult {
 pub fn gradient_descent<'a>(
     model: &MultiLayerPerceptron,
     training_data: impl Iterator<Item = &'a TrainingData>,
+    iteration: usize,
     mut loss_function: impl FnMut(&[Value], &[f64]) -> Value,
     mut accuracy_function: impl FnMut(&[Value], &[f64]) -> bool,
-    iteration: usize,
     mut learning_rate: impl FnMut(usize) -> f64,
 ) -> GradientDescentResult {
     struct Acc {
@@ -130,9 +130,9 @@ pub fn stochastic_gradient_descent(
     gradient_descent(
         model,
         RandomSampleIterator::new(training_data, batch_size).unwrap(),
+        iteration,
         &mut loss_function,
         &mut accuracy_function,
-        iteration,
         &mut learning_rate,
     )
 }
