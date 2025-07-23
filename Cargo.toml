@@ -8,3 +8,4 @@ rand = "0.9.1"
 
 [dev-dependencies]
 anyhow = "1.0.98"
+iced = { version = "0.13.1", features = ["advanced", "image"] }
