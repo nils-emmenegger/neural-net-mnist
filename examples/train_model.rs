@@ -132,13 +132,14 @@ fn main() -> Result<()> {
     });
 
     let mut last_timestamp = std::time::Instant::now();
+    let mut iteration = 0;
 
-    for iteration in 0.. {
+    loop {
         let mut inner_iterations = 0;
         let mut total_loss = 0.0;
         let mut total_accuracy = 0.0;
 
-        while last_timestamp.elapsed().as_secs() < 30 {
+        while last_timestamp.elapsed().as_secs() < 30 * 60 {
             let GradientDescentResult {
                 avg_loss,
                 avg_accuracy,
@@ -152,15 +153,20 @@ fn main() -> Result<()> {
                 &learning_rate,
             );
 
+            iteration += 1;
             inner_iterations += 1;
             total_loss += avg_loss;
             total_accuracy += avg_accuracy;
+
+            if handle.is_finished() {
+                break;
+            }
         }
 
         println!(
             "Iteration {iteration:>4}: loss = {:>8.5}, accuracy = {:>8.5}, learning rate = {:>8.5}",
-            total_loss / inner_iterations as f64,
-            total_accuracy / inner_iterations as f64,
+            total_loss / inner_iterations.max(1) as f64,
+            total_accuracy / inner_iterations.max(1) as f64,
             learning_rate(iteration)
         );
 
